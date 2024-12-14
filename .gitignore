@@ -162,5 +162,7 @@ cython_debug/
 #.idea/
 #/Data-Analytics-Pathway-Assessment/TFAenv
 TFAenv/
+/.tmpenv
+
 
 
