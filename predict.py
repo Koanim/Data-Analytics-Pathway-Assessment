@@ -74,7 +74,7 @@ def initialize_session_state(keys_with_defaults):
 initialize_session_state({
     'age': 30, 'age_group': 'Adult', 'job': 'unknown', 'marital': 'single',
     'education': 'unknown', 'default': 'no', 'balance': 1000, 'housing': 'no',
-    'loan': 'no', 'contact': 'unknown', 'day': 15, 'month': 'january',
+    'loan': 'no', 'contact': 'unknown', 'day': 15, 'month': 'jan',
     'duration': 100, 'campaign': 1, 'pdays': -1, 'previous': 0, 'poutcome': 'unknown',
     'prediction': None, 'probability': None
 })
@@ -189,7 +189,6 @@ display_results()
 
 
 def display_historic_predictions():
-    
     st.subheader(":violet[Displaying historic predictions]")
     csv_path = './Data/history.csv'
     csv_exists = os.path.isfile(csv_path)
