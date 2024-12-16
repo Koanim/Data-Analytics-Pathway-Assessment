@@ -11,3 +11,4 @@ age,age_group,job,marital,education,default,balance,housing,loan,contact,day,mon
 30,Senior,unknown,divorced,primary,yes,1000,yes,no,telephone,15,may,100,1,15,0,unknown,no,0.9989053571382046,Gradient Boosting
 30,Senior,unknown,divorced,primary,yes,969,yes,yes,telephone,15,may,100,1,15,0,failure,no,0.9989976579576966,Gradient Boosting
 30,Senior,unknown,divorced,primary,yes,969,yes,yes,telephone,15,may,100,1,15,0,failure,no,0.93,Random Forest
+30,Adult,unknown,single,unknown,no,1000,no,no,unknown,15,jan,100,1,-1,0,unknown,no,0.9914921778222675,Gradient Boosting
