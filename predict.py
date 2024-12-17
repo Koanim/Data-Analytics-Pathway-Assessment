@@ -4,22 +4,22 @@ import os
 import pandas as pd
 from threading import Lock
 
-# Configure the Streamlit page
+
 st.set_page_config(
     page_title='Predict Page',
-    page_icon='\U0001F50D',
+    page_icon='🔍',
     layout='wide'
 )
 
-# Thread-safe file writing lock
+
 write_lock = Lock()
 
-# Helper: Define base directories
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE_DIR, 'models')
 DATA_DIR = os.path.join(BASE_DIR, 'Data')
 
-# Cache resources for efficiency
+
 @st.cache_resource()
 def load_pipeline(model_path):
     try:
@@ -38,7 +38,7 @@ def load_encoder(encoder_path):
         st.error(f"Encoder file not found: {encoder_path}")
         return None
 
-# Load and select the model
+# Function to select model
 def select_model():
     model_options = {
         'XGBoost': os.path.join(MODEL_DIR, 'XGB_pipeline.joblib'),
@@ -46,25 +46,27 @@ def select_model():
         'Random Forest': os.path.join(MODEL_DIR, 'RF_pipeline.joblib')
     }
 
-    col1, _ = st.columns(2)
-    with col1:
-        selected_model = st.selectbox('Select Model', options=list(model_options.keys()), key='selected_model')
+    # Dropdown to select model
+    selected_model = st.selectbox(
+        'Select Model',
+        options=list(model_options.keys()),
+        key='selected_model'
+    )
 
-    # Clear previous prediction if the model has changed
+    # Clear prediction if the model changes
     if 'previous_model' in st.session_state:
         if st.session_state['previous_model'] != selected_model:
             st.session_state['prediction'] = None
             st.session_state['probability'] = None
 
-    # Save the current model selection
     st.session_state['previous_model'] = selected_model
-
     model_path = model_options[selected_model]
+
     pipeline = load_pipeline(model_path)
     encoder = load_encoder(os.path.join(MODEL_DIR, 'encoder.joblib'))
 
     if pipeline is None or encoder is None:
-        st.stop()  # Prevent further execution if models are missing
+        st.stop()
 
     return pipeline, encoder
 
@@ -84,35 +86,20 @@ initialize_session_state({
 
 # Function to make predictions
 def make_prediction(pipeline, encoder):
-    inputs = {
-        'age': st.session_state['age'],
-        'age_group': st.session_state['age_group'],
-        'job': st.session_state['job'],
-        'marital': st.session_state['marital'],
-        'education': st.session_state['education'],
-        'default': st.session_state['default'],
-        'balance': st.session_state['balance'],
-        'housing': st.session_state['housing'],
-        'loan': st.session_state['loan'],
-        'contact': st.session_state['contact'],
-        'day': st.session_state['day'],
-        'month': st.session_state['month'],
-        'duration': st.session_state['duration'],
-        'campaign': st.session_state['campaign'],
-        'pdays': st.session_state['pdays'],
-        'previous': st.session_state['previous'],
-        'poutcome': st.session_state['poutcome']
-    }
+    inputs = {key: st.session_state[key] for key in [
+        'age', 'age_group', 'job', 'marital', 'education', 'default', 
+        'balance', 'housing', 'loan', 'contact', 'day', 'month', 
+        'duration', 'campaign', 'pdays', 'previous', 'poutcome'
+    ]}
 
-    # Validate inputs
     if st.session_state['duration'] <= 0:
         st.warning("Duration must be greater than 0.")
         return None, None
 
     data = pd.DataFrame([inputs])
 
-    # Ensure column alignment with pipeline
     try:
+        # Ensure column alignment
         data = data[pipeline.feature_names_in_]
     except AttributeError:
         st.error("Pipeline feature alignment issue. Ensure feature names match.")
@@ -132,7 +119,7 @@ def make_prediction(pipeline, encoder):
 
     # Log prediction history
     data['prediction'] = predicted_label
-    data['probability'] = probability.max()  # Log max probability
+    data['probability'] = probability.max()
     data['model_used'] = st.session_state['selected_model']
 
     history_file = os.path.join(DATA_DIR, 'history.csv')
@@ -152,24 +139,24 @@ def display_form():
         with col1:
             st.markdown('### Bank Customer Records')
             st.number_input('Customer Age', key='age', min_value=18, max_value=100, value=st.session_state['age'])
-            st.selectbox('Customer Age Group', options=['Youth', 'Young Adult', 'Adult', 'Senior'], key='age_group')
-            st.selectbox('Customer Profession', options=[
+            st.selectbox('Customer Age Group', ['Youth', 'Young Adult', 'Adult', 'Senior'], key='age_group')
+            st.selectbox('Customer Profession', [
                 "admin.", "unknown", "unemployed", "management", "housemaid",
                 "entrepreneur", "student", "blue-collar", "self-employed",
                 "retired", "technician", "services"
             ], key='job')
-            st.selectbox('Customer\'s Marital Status', options=["married", "divorced", "single"], key='marital')
-            st.selectbox('Customer\'s Education Status', options=["unknown", "secondary", "primary", "tertiary"], key='education')
-            st.selectbox('Does the Customer have credit in Default?', options=["yes", "no"], key='default')
-            st.selectbox('Does the Customer have housing loan?', options=["yes", "no"], key='housing')
-            st.selectbox('Does the Customer have personal loan?', options=["yes", "no"], key='loan')
+            st.selectbox('Customer\'s Marital Status', ["married", "divorced", "single"], key='marital')
+            st.selectbox('Customer\'s Education Status', ["unknown", "secondary", "primary", "tertiary"], key='education')
+            st.selectbox('Does the Customer have credit in Default?', ["yes", "no"], key='default')
+            st.selectbox('Does the Customer have housing loan?', ["yes", "no"], key='housing')
+            st.selectbox('Does the Customer have personal loan?', ["yes", "no"], key='loan')
             st.number_input('Customer Account Balance', key='balance', min_value=0, value=st.session_state['balance'])
 
         with col2:
             st.markdown('### Current and Previous Campaign Contacts')
-            st.selectbox('Customer\'s Preferred Contact Mode', options=["unknown", "telephone", "cellular"], key='contact')
+            st.selectbox('Customer\'s Preferred Contact Mode', ["unknown", "telephone", "cellular"], key='contact')
             st.number_input('Day of Last Contact', key='day', min_value=1, max_value=31, value=st.session_state['day'])
-            st.selectbox('Month of Last Contact', options=[
+            st.selectbox('Month of Last Contact', [
                 'may', 'jun', 'jul', 'aug', 'oct', 'nov', 'dec', 'jan', 'feb',
                 'mar', 'apr', 'sep'
             ], key='month')
@@ -177,8 +164,9 @@ def display_form():
             st.number_input('Number of Contacts During Campaign', key='campaign', min_value=1, value=st.session_state['campaign'])
             st.number_input('Number of Days Passed After Last Contact', key='pdays', min_value=-1, value=st.session_state['pdays'])
             st.number_input('Number of Customer contacts during previous campaign', key='previous', min_value=0, value=st.session_state['previous'])
-            st.selectbox('Outcome of the Previous Campaign', options=['unknown', 'failure', 'success'], key='poutcome')
-        st.form_submit_button('Submit', on_click=make_prediction, kwargs=dict(pipeline=pipeline, encoder=encoder))
+            st.selectbox('Outcome of the Previous Campaign', ['unknown', 'failure', 'success'], key='poutcome')
+
+        st.form_submit_button('Submit', on_click=make_prediction, kwargs={'pipeline': pipeline, 'encoder': encoder})
 
 # Display results
 def display_results():
@@ -189,19 +177,19 @@ def display_results():
         col1, col2 = st.columns(2)
         with col1:
             if final_prediction == "Yes":
-                st.success(f"### Subscribed? :green[Yes] - Customer is likely to subscribe.")
+                st.success(f"### Subscribed? ✅ Yes - Likely to subscribe.")
             else:
-                st.error(f"### Subscribed? :red[No] - Customer is not likely to subscribe.")
+                st.error(f"### Subscribed? ❌ No - Not likely to subscribe.")
         with col2:
             prob = st.session_state['probability']
             if final_prediction == "Yes":
-                st.write(f"#### Probability: :green[{round(prob[1] * 100, 2)}%]")
+                st.write(f"#### Probability: ✅ {round(prob[1] * 100, 2)}%")
             else:
-                st.write(f"#### Probability: :red[{round(prob[0] * 100, 2)}%]")
+                st.write(f"#### Probability: ❌ {round(prob[0] * 100, 2)}%")
 
 # Display historic predictions
 def display_historic_predictions():
-    st.subheader(":violet[Displaying historic predictions]")
+    st.subheader("Historic Predictions")
     csv_path = os.path.join(DATA_DIR, 'history.csv')
 
     if os.path.isfile(csv_path):
@@ -211,7 +199,7 @@ def display_historic_predictions():
         st.info("No predictions have been logged yet.")
 
 # Main app structure
-st.header(':rainbow-background[Will Customer Subscribe to Term Deposit?]')
+st.header("Will the Customer Subscribe to a Term Deposit?")
 display_form()
 display_results()
 display_historic_predictions()
