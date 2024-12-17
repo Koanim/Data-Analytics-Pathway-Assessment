@@ -2,15 +2,22 @@ import streamlit as st
 import joblib
 import os
 import pandas as pd
-
+from threading import Lock
 
 # Configure the Streamlit page
 st.set_page_config(
     page_title='Predict Page',
-    page_icon='🔍',
+    page_icon='\U0001F50D',
     layout='wide'
 )
 
+# Thread-safe file writing lock
+write_lock = Lock()
+
+# Helper: Define base directories
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_DIR = os.path.join(BASE_DIR, 'models')
+DATA_DIR = os.path.join(BASE_DIR, 'Data')
 
 # Cache resources for efficiency
 @st.cache_resource()
@@ -22,7 +29,6 @@ def load_pipeline(model_path):
         st.error(f"Model file not found: {model_path}")
         return None
 
-
 @st.cache_resource()
 def load_encoder(encoder_path):
     try:
@@ -32,13 +38,12 @@ def load_encoder(encoder_path):
         st.error(f"Encoder file not found: {encoder_path}")
         return None
 
-
 # Load and select the model
 def select_model():
     model_options = {
-        'XGBoost': './models/XGB_pipeline.joblib',
-        'Gradient Boosting': './models/GB_pipeline.joblib',
-        'Random Forest': './models/RF_pipeline.joblib'
+        'XGBoost': os.path.join(MODEL_DIR, 'XGB_pipeline.joblib'),
+        'Gradient Boosting': os.path.join(MODEL_DIR, 'GB_pipeline.joblib'),
+        'Random Forest': os.path.join(MODEL_DIR, 'RF_pipeline.joblib')
     }
 
     col1, _ = st.columns(2)
@@ -56,20 +61,18 @@ def select_model():
 
     model_path = model_options[selected_model]
     pipeline = load_pipeline(model_path)
-    encoder = load_encoder('./models/encoder.joblib')
+    encoder = load_encoder(os.path.join(MODEL_DIR, 'encoder.joblib'))
 
     if pipeline is None or encoder is None:
-        st.stop()  
+        st.stop()  # Prevent further execution if models are missing
 
     return pipeline, encoder
 
-
-
+# Initialize session state
 def initialize_session_state(keys_with_defaults):
     for key, default in keys_with_defaults.items():
         if key not in st.session_state:
             st.session_state[key] = default
-
 
 initialize_session_state({
     'age': 30, 'age_group': 'Adult', 'job': 'unknown', 'marital': 'single',
@@ -78,7 +81,6 @@ initialize_session_state({
     'duration': 100, 'campaign': 1, 'pdays': -1, 'previous': 0, 'poutcome': 'unknown',
     'prediction': None, 'probability': None
 })
-
 
 # Function to make predictions
 def make_prediction(pipeline, encoder):
@@ -101,27 +103,44 @@ def make_prediction(pipeline, encoder):
         'previous': st.session_state['previous'],
         'poutcome': st.session_state['poutcome']
     }
-    
+
+    # Validate inputs
+    if st.session_state['duration'] <= 0:
+        st.warning("Duration must be greater than 0.")
+        return None, None
+
     data = pd.DataFrame([inputs])
-    
+
+    # Ensure column alignment with pipeline
+    try:
+        data = data[pipeline.feature_names_in_]
+    except AttributeError:
+        st.error("Pipeline feature alignment issue. Ensure feature names match.")
+        return None, None
+
     prediction = pipeline.predict(data)[0]
     probability = pipeline.predict_proba(data)[0]
-    predicted_label = encoder.inverse_transform([int(prediction)])[0]
+
+    try:
+        predicted_label = encoder.inverse_transform([int(prediction)])[0]
+    except Exception as e:
+        st.error(f"Error in encoding prediction: {e}")
+        predicted_label = "Unknown"
 
     st.session_state['prediction'] = predicted_label
     st.session_state['probability'] = probability
 
     # Log prediction history
     data['prediction'] = predicted_label
-    data['probability'] = probability.max()  
+    data['probability'] = probability.max()  # Log max probability
     data['model_used'] = st.session_state['selected_model']
 
-    history_file = 'Data/history.csv'
+    history_file = os.path.join(DATA_DIR, 'history.csv')
     os.makedirs(os.path.dirname(history_file), exist_ok=True)
-    data.to_csv(history_file, mode='a', header=not os.path.exists(history_file), index=False)
+    with write_lock:
+        data.to_csv(history_file, mode='a', header=not os.path.exists(history_file), index=False)
 
     return predicted_label, probability
-
 
 # Input form for predictions
 def display_form():
@@ -129,7 +148,7 @@ def display_form():
 
     with st.form('input_form'):
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.markdown('### Bank Customer Records')
             st.number_input('Customer Age', key='age', min_value=18, max_value=100, value=st.session_state['age'])
@@ -145,7 +164,7 @@ def display_form():
             st.selectbox('Does the Customer have housing loan?', options=["yes", "no"], key='housing')
             st.selectbox('Does the Customer have personal loan?', options=["yes", "no"], key='loan')
             st.number_input('Customer Account Balance', key='balance', min_value=0, value=st.session_state['balance'])
-        
+
         with col2:
             st.markdown('### Current and Previous Campaign Contacts')
             st.selectbox('Customer\'s Preferred Contact Mode', options=["unknown", "telephone", "cellular"], key='contact')
@@ -159,8 +178,8 @@ def display_form():
             st.number_input('Number of Days Passed After Last Contact', key='pdays', min_value=-1, value=st.session_state['pdays'])
             st.number_input('Number of Customer contacts during previous campaign', key='previous', min_value=0, value=st.session_state['previous'])
             st.selectbox('Outcome of the Previous Campaign', options=['unknown', 'failure', 'success'], key='poutcome')
-        st.form_submit_button('Submit', on_click=make_prediction, kwargs=dict(pipeline=pipeline, encoder=encoder))
 
+        st.form_submit_button('Submit', on_click=make_prediction, kwargs=dict(pipeline=pipeline, encoder=encoder))
 
 # Display results
 def display_results():
@@ -181,23 +200,19 @@ def display_results():
             else:
                 st.write(f"#### Probability: :red[{round(prob[0] * 100, 2)}%]")
 
+# Display historic predictions
+def display_historic_predictions():
+    st.subheader(":violet[Displaying historic predictions]")
+    csv_path = os.path.join(DATA_DIR, 'history.csv')
+
+    if os.path.isfile(csv_path):
+        history = pd.read_csv(csv_path)
+        st.dataframe(history)
+    else:
+        st.info("No predictions have been logged yet.")
 
 # Main app structure
 st.header(':rainbow-background[Will Customer Subscribe to Term Deposit?]')
 display_form()
 display_results()
-
-
-def display_historic_predictions():
-    st.subheader(":violet[Displaying historic predictions]")
-    csv_path = './Data/history.csv'
-    csv_exists = os.path.isfile(csv_path)
-
-    if csv_exists:
-        history = pd.read_csv(csv_path)
-        
-        st.dataframe(history)
-    #return history
-
-#st.header(':rainbow-background[Historic Predictions]') 
 display_historic_predictions()
