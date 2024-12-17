@@ -75,7 +75,7 @@ def initialize_session_state(keys_with_defaults):
             st.session_state[key] = default
 
 initialize_session_state({
-    'age': 30, 'age_group': 'Adult', 'job': 'unknown', 'marital': 'single',
+    'age': 18, 'age_group': 'Adult', 'job': 'unknown', 'marital': 'single',
     'education': 'unknown', 'default': 'no', 'balance': 1000, 'housing': 'no',
     'loan': 'no', 'contact': 'unknown', 'day': 15, 'month': 'jan',
     'duration': 100, 'campaign': 1, 'pdays': -1, 'previous': 0, 'poutcome': 'unknown',
@@ -175,7 +175,7 @@ def display_form():
             ], key='month')
             st.number_input('Duration of Last Contact (in seconds)', key='duration', min_value=0, value=st.session_state['duration'])
             st.number_input('Number of Contacts During Campaign', key='campaign', min_value=1, value=st.session_state['campaign'])
-            st.number_input('Number of Days Passed After Last Contact', key='pdays', min_value=-1, value=st.session_state['pdays'])
+            st.number_input('Number of Days Passed After Last Contact', key='pdays', min_value=0, value=st.session_state['pdays'])
             st.number_input('Number of Customer contacts during previous campaign', key='previous', min_value=0, value=st.session_state['previous'])
             st.selectbox('Outcome of the Previous Campaign', options=['unknown', 'failure', 'success'], key='poutcome')
 
