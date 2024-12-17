@@ -1,5 +1,5 @@
 # Data-Analytics-Pathway-Assessment
-This Project is assessment for Azubi Africa Talent Mobility Program
+This Project is an assessment for Azubi Africa Talent Mobility Program
 
 
 Analysis Overview
