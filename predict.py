@@ -175,10 +175,9 @@ def display_form():
             ], key='month')
             st.number_input('Duration of Last Contact (in seconds)', key='duration', min_value=0, value=st.session_state['duration'])
             st.number_input('Number of Contacts During Campaign', key='campaign', min_value=1, value=st.session_state['campaign'])
-            st.number_input('Number of Days Passed After Last Contact', key='pdays', min_value=0, value=st.session_state['pdays'])
+            st.number_input('Number of Days Passed After Last Contact', key='pdays', min_value=-1, value=st.session_state['pdays'])
             st.number_input('Number of Customer contacts during previous campaign', key='previous', min_value=0, value=st.session_state['previous'])
             st.selectbox('Outcome of the Previous Campaign', options=['unknown', 'failure', 'success'], key='poutcome')
-
         st.form_submit_button('Submit', on_click=make_prediction, kwargs=dict(pipeline=pipeline, encoder=encoder))
 
 # Display results
